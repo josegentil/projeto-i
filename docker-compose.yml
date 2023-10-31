@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:latest
+    restart: always
+    container_name: pg_cont
+    ports:
+      - 5432
+    environment:
+      POSTGRES_USER: zezo
+      POSTGRES_PASSWORD: 1234
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+    networks:
+      - docker_compose_net
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongo_cont
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: zezo
+      MONGO_INITDB_ROOT_PASSWORD: zezo
+    volumes:
+      - ./mongodb-init/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - docker_compose_net
+
+  python_app:
+    image: python:latest
+    container_name: py_cont
+    ports:
+      - 5000:5000
+    build:
+      context: ./python_etl
+      dockerfile: /docker/Dockerfile
+    volumes:
+      - ./python_etl:/app
+      - ./projeto_etl/input:/app
+    depends_on:
+      - "postgres"
+      - "mongodb"
+    networks:
+      - docker_compose_net
+
+networks:
+  docker_compose_net:
+    driver: bridge
+
+volumes:
+  postgres_db:
